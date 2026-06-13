@@ -16,6 +16,9 @@ import saga.system.order_processing.outbox.OrderCreatedPayload;
 import saga.system.order_processing.outbox.OutboxEvent;
 import saga.system.order_processing.outbox.OutboxEventRepository;
 import saga.system.order_processing.outbox.OutboxStatus;
+import saga.system.order_processing.inventory.model.Reserved;
+import saga.system.order_processing.inventory.model.ReservationStatus;
+import saga.system.order_processing.inventory.repository.ReservedRepository;
 import saga.system.order_processing.repository.ItemRepository;
 import saga.system.order_processing.repository.OrderRepository;
 
@@ -30,8 +33,11 @@ public class OrderService {
 
     private final OrderRepository orderRepository;
     private final ItemRepository itemRepository;
+    private final ReservedRepository reservedRepository;
     private final OutboxEventRepository outboxEventRepository;
     private final ObjectMapper objectMapper;
+
+    private static final int RESERVATION_TTL_MINUTES = 20;
 
     @Transactional
     public OrderResponse createOrder(CreateOrderRequest request, User user) {
@@ -66,6 +72,18 @@ public class OrderService {
         order.setPrice(totalPrice);
         Order saved = orderRepository.save(order);
 
+        LocalDateTime now = LocalDateTime.now();
+        for (OrderItem oi : saved.getOrderItems()) {
+            Reserved reservation = new Reserved();
+            reservation.setOrderId(saved.getId());
+            reservation.setItemId(oi.getItem().getId());
+            reservation.setQty(oi.getQty());
+            reservation.setStatus(ReservationStatus.ACTIVE);
+            reservation.setCreatedAt(now);
+            reservation.setExpiresAt(now.plusMinutes(RESERVATION_TTL_MINUTES));
+            reservedRepository.save(reservation);
+        }
+
         writeOutboxEvent(saved, user);
 
         return toResponse(saved);
@@ -80,7 +98,7 @@ public class OrderService {
 
     private void writeOutboxEvent(Order order, User user) {
         List<OrderItemResponse> items = order.getOrderItems().stream()
-                .map(oi -> new OrderItemResponse(oi.getItem().getName(), oi.getPurchasePrice(), oi.getQty()))
+                .map(oi -> new OrderItemResponse(oi.getItem().getId(), oi.getItem().getName(), oi.getPurchasePrice(), oi.getQty()))
                 .toList();
 
         OrderCreatedPayload payload = new OrderCreatedPayload(
@@ -114,7 +132,7 @@ public class OrderService {
 
     private OrderResponse toResponse(Order order) {
         List<OrderItemResponse> items = order.getOrderItems().stream()
-                .map(oi -> new OrderItemResponse(oi.getItem().getName(), oi.getPurchasePrice(), oi.getQty()))
+                .map(oi -> new OrderItemResponse(oi.getItem().getId(), oi.getItem().getName(), oi.getPurchasePrice(), oi.getQty()))
                 .toList();
         return new OrderResponse(order.getId(), items, order.getPrice(), order.getCreatedAt());
     }
