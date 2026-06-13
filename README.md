@@ -158,3 +158,51 @@ GET /api/orders
 ```
 
 Response `200 OK`: array of order objects (same shape as above).
+
+---
+
+### Payments
+
+All payment endpoints require a valid JWT token in the `Authorization` header:
+
+```
+Authorization: Bearer <jwt-token>
+```
+
+#### Initiate a payment
+
+```
+POST /api/payments
+```
+
+Request body:
+
+```json
+{
+  "orderId": 1,
+  "amount": 42.43
+}
+```
+
+Response `201 Created`:
+
+```json
+{
+  "transactionId": 1,
+  "orderId": 1,
+  "amount": 42.43,
+  "status": "PENDING"
+}
+```
+
+Response `409 Conflict` — if a payment has already been initiated for the given `orderId`:
+
+```json
+{
+  "status": 409,
+  "error": "Conflict",
+  "message": "Payment already initiated for order 1"
+}
+```
+
+The service enforces idempotency using `orderId` as the key — submitting the same `orderId` twice will always return `409` rather than creating a duplicate transaction.
