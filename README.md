@@ -49,7 +49,7 @@ docker exec -it order-processing-db psql -U orderuser -d orderdb
 Then run:
 
 ```sql
-INSERT INTO item (name, price, stocked_qty) VALUES
+INSERT INTO items (name, price, stocked_qty) VALUES
   ('Widget A', 9.99, 100),
   ('Widget B', 24.99, 50),
   ('Widget C', 4.49, 200);
