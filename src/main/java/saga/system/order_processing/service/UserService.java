@@ -5,6 +5,7 @@ import saga.system.order_processing.dto.LoginRequest;
 import saga.system.order_processing.dto.RegisterRequest;
 import saga.system.order_processing.model.User;
 import saga.system.order_processing.repository.UserRepository;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -22,7 +23,7 @@ public class UserService implements UserDetailsService {
     private final AuthenticationManager authenticationManager;
 
     public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder,
-                       JwtService jwtService, AuthenticationManager authenticationManager) {
+                       JwtService jwtService, @Lazy AuthenticationManager authenticationManager) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
