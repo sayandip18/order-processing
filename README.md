@@ -206,3 +206,59 @@ Response `409 Conflict` — if a payment has already been initiated for the give
 ```
 
 The service enforces idempotency using `orderId` as the key — submitting the same `orderId` twice will always return `409` rather than creating a duplicate transaction.
+
+---
+
+### Shipments
+
+All shipment endpoints require a valid JWT token in the `Authorization` header:
+
+```
+Authorization: Bearer <jwt-token>
+```
+
+Shipment records are created automatically when a `PaymentCompleted` event is consumed from Kafka. The initial status is `PENDING`.
+
+#### Update shipment status
+
+```
+PATCH /api/shipments/{id}
+```
+
+Path parameter: `id` is the shipment record ID.
+
+Request body:
+
+```json
+{
+  "status": "ON_TRANSIT"
+}
+```
+
+Valid status values (must progress in order): `PENDING` → `ON_TRANSIT` → `OUT_FOR_DELIVERY` → `DELIVERED`
+
+Response `200 OK`:
+
+```json
+{
+  "id": 1,
+  "orderId": 1,
+  "status": "ON_TRANSIT",
+  "dateOfDelivery": null
+}
+```
+
+When `status` is set to `DELIVERED`, `dateOfDelivery` is automatically set to the current timestamp:
+
+```json
+{
+  "id": 1,
+  "orderId": 1,
+  "status": "DELIVERED",
+  "dateOfDelivery": "2026-06-14T15:30:00"
+}
+```
+
+Response `404 Not Found` — if no shipment exists with the given ID.
+
+Response `422 Unprocessable Entity` — if the requested status transition is not valid (e.g. skipping a step or going backwards).
